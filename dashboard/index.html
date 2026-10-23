@@ -1,0 +1,810 @@
+<!doctype html><html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EcoFusion — мониторинг отходов</title><style>
+:root{font-family:system-ui,'Segoe UI',Arial,sans-serif;color:#213529;background:#f7f9f4}*{box-sizing:border-box}body{margin:0}header{background:#e5edcb;border-bottom:1px solid #cbd7ad;padding:18px 3%}h1{margin:0;color:#276736;font-size:24px}.sub{font-size:13px;color:#5c685a;margin-top:4px}main{padding:22px 3%;max-width:1700px;margin:auto}.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:18px}.stat{background:white;border:1px solid #dde6d5;border-radius:9px;padding:15px}.stat strong{display:block;font-size:25px}.stat span{color:#627362;font-size:12px}select{padding:9px;border:1px solid #c7d6bf;border-radius:5px;background:white;color:#213529}.bar{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}input.toggle{min-width:0;width:auto;flex:none;vertical-align:middle;margin:0 5px 0 2px}input{padding:11px 12px;border:1px solid #c7d6bf;border-radius:6px;min-width:280px;flex:1}button{cursor:pointer;border:1px solid #4c8e4e;border-radius:5px;background:#398546;color:white;padding:8px 13px;font-weight:600}button:hover{background:#2a6c36}.secondary{background:#fff;color:#33743c}.secondary:hover{background:#edf5e9}.tablewrap{overflow-x:auto;background:white;border:1px solid #d5e2cb;border-radius:8px}table{border-collapse:collapse;width:100%;min-width:1260px}th{text-align:left;background:#e4edcd;color:#28672e;font-size:12px;padding:12px 10px;white-space:nowrap;border-right:1px solid white}td{padding:12px 10px;border-bottom:1px solid #e7ece3;vertical-align:top;font-size:13px;max-width:340px}tr:hover td{background:#fbfcf5}a{color:#19783a;cursor:pointer;text-decoration:underline}.muted{color:#728074;font-size:12px}.clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:340px}.pill{display:inline-block;background:#fff2c3;color:#6b5209;border-radius:4px;padding:3px 6px;font-size:11px;font-weight:bold}.rec{font-size:12px;font-weight:600}.rec.promising{color:#217b38}.rec.medium{color:#9b7400}.rec.low{color:#86652e}.paging{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:18px}.overlay{display:none;position:fixed;inset:0;background:#14251ad1;z-index:10;align-items:center;justify-content:center;padding:20px}.overlay.visible{display:flex}.modal{background:white;max-width:1050px;width:100%;max-height:92vh;overflow:auto;border-radius:10px;padding:24px;box-shadow:0 20px 70px #0005}.modalhead{display:flex;align-items:start;justify-content:space-between;gap:16px}.modal h2{margin:4px 0 10px;font-size:21px}.modal section{margin:18px 0;border-top:1px solid #e7ece3;padding-top:12px}.modal h3{font-size:15px;color:#286833}.modal pre{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;font-family:inherit;font-size:13px;background:#f7f9f4;padding:12px;border-radius:5px;max-height:300px;overflow:auto}.kv{display:grid;grid-template-columns:180px 1fr;gap:8px;font-size:13px}.kv strong{color:#566758}.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}.photo{width:100%;height:130px;object-fit:cover;border-radius:5px;border:1px solid #d5e1cf}.media{background:#f7f9f4;padding:8px;border-radius:6px}.media small{display:block;overflow-wrap:anywhere;color:#657464;margin-top:4px}.hint{border-left:4px solid #d5b551;background:#fff9e6;padding:11px;font-size:13px}.error{color:#b12e24}@media(max-width:720px){.stats{grid-template-columns:1fr}.modal{padding:14px}.kv{grid-template-columns:1fr}main{padding:14px}}
+</style></head><body><header><h1>EcoFusion · журнал публикаций ВК</h1><div class="sub">Учебный прототип мониторинга возможных мест несанкционированного размещения отходов · Bronze / обработка данных / результаты проверки</div></header><main><div class="stats"><div class="stat"><strong id="total">—</strong><span>Публикаций в базе</span></div><div class="stat"><strong id="geocount">—</strong><span>Публикаций с пространственными признаками</span></div><div class="stat"><strong id="mediaCount">—</strong><span>Вложений в базе</span></div></div><div class="bar"><input id="search" placeholder="Поиск по тексту или номеру сообщения"><button onclick="reload()">Найти</button><label for="level" class="muted">Подсказка:</label><select id="level" onchange="reload()"><option value="all">Все</option><option value="promising">Можно уточнить место на карте</option><option value="medium">Нужно уточнить место</option><option value="low">Недостаточно сведений о месте</option></select><label for="sort" class="muted">Сортировать:</label><select id="sort" onchange="reload()"><option value="recommendation">По рекомендации</option><option value="published_at">По дате</option><option value="silver_id">По номеру</option><option value="attachments">По вложениям</option><option value="region">По региону</option><option value="categories">По категории</option><option value="status">По статусу</option><option value="views_count">По просмотрам</option></select><select id="direction" onchange="reload()"><option value="desc">По убыванию</option><option value="asc">По возрастанию</option></select><label class="muted" title="Не изменяет данные в PostgreSQL"><input class="toggle" type="checkbox" id="wasteOnly" checked onchange="reload()"> Только сообщения об отходах</label><label class="muted" title="Скрываются только тексты, полностью совпадающие после приведения пробелов и регистра"><input class="toggle" type="checkbox" id="showRepeats" onchange="reload()"> Показывать повторы</label><span id="info" class="muted"></span></div><div class="tablewrap"><table><thead><tr><th>Дата</th><th>№</th><th>Сообщение / текст</th><th>Источник</th><th>Тема сообщения</th><th>Место события</th><th>Вложения</th><th>Адресные ориентиры</th><th>Рекомендация</th><th>Статус</th><th>Действие</th></tr></thead><tbody id="rows"><tr><td colspan="11">Загрузка данных…</td></tr></tbody></table></div><div class="paging"><button class="secondary" onclick="move(-1)">← Назад</button><span id="pages" class="muted"></span><button class="secondary" onclick="move(1)">Вперёд →</button></div><p class="muted">По умолчанию скрыты одинаковые тексты и сообщения без явных признаков отходов; это фильтры интерфейса, исходные записи в Bronze и Silver сохранены. Отбор по теме является предварительным и может пропускать или включать нерелевантные сообщения. Сначала показаны публикации с наиболее полезными географическими данными. «Можно уточнить место на карте» означает, что описание места достаточно связное для попытки поиска, а не обнаруженную панораму или подтверждённую свалку. Кнопка «Проверить» пока выполняет только предварительную проверку: автоматический запуск Яндекс Панорам и распознавания изображений ещё не подключён.</p></main><div id="overlay" class="overlay" onclick="if(event.target===this)closeCard()"><article class="modal" role="dialog" aria-modal="true"><div class="modalhead"><div><div class="muted">Полная карточка публикации</div><h2 id="cardtitle">Публикация</h2></div><button class="secondary" onclick="closeCard()">Закрыть ×</button></div><div id="cardbody"></div></article></div><script>
+let currentPage=1,total=0,lastItem=null;const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function fmt(v){return v?new Date(v).toLocaleString('ru-RU'):'—'}
+const categoryNames={waste:'Отходы / мусор',illegal_dumping:'Предполагаемая несанкционированная свалка',environmental_complaint:'Жалоба на экологическую проблему',construction_waste:'Строительные отходы',household_waste:'Бытовые отходы',plastic:'Пластик',littering:'Замусоривание',other:'Другое',water_pollution:'Загрязнение водоёмов',environmental_action:'Природоохранная деятельность',air_pollution:'Загрязнение воздуха',soil_pollution:'Загрязнение почвы',recycling:'Переработка отходов',waste_collection:'Сбор и вывоз отходов',ecology:'Экологическая тематика',cleanup:'Уборка территории',environmental_news:'Экологическая новость'};
+const relationNames={NEAR:'Рядом / неподалёку',OPPOSITE:'Напротив',FRONT:'Перед объектом / у входа',BEHIND:'За объектом',BETWEEN:'Между объектами',RELATIVE_SIDE:'Сторона объекта',ROAD_SIDE:'Сторона дороги'};
+const fieldNames={candidate:'Найден предполагаемый ориентир',missing_landmark:'Недостаточно сведений об ориентире'};
+function categories(v){if(!v)return '—';let arr=Array.isArray(v)?v:[v];return arr.map(x=>{if(typeof x==='string')return categoryNames[x]||'Категория без перевода (код: '+x+')';if(typeof x==='object'&&x!==null){return Object.entries(x).map(([k,y])=>(categoryNames[k]||k)+': '+String(y)).join('; ')}return String(x)}).join('; ')||'—'}
+function addressSummary(g){
+  if(!g)return 'Не установлены';
+  const a=g.address_landmarks||{};
+  const values=[
+    ...(a.street_candidates||[]),
+    ...(a.house_numbers||[]).map(x=>'дом '+x)
+  ];
+  return values.length?values.join('; '):'Не установлены';
+}
+function objectSummary(g){
+  if(!g)return 'Не обнаружены';
+  const a=g.address_landmarks||{};
+  const values=a.landmarks||[];
+  return values.length?[...new Set(values)].join('; '):'Не обнаружены';
+}
+function territorySummary(t){if(!t)return 'Не выделены';const rows=[...(t.municipal_districts||[]),...(t.forestries||[]),...(t.other_territories||[])];return rows.length?rows.join('; '):'Не выделены'}
+function locationEvidence(r){const x=r.coherent_location;if(x)return `${x.city}, ${x.region}; ${x.street}, дом ${x.house}. Адрес — ориентир; координаты свалки не известны.`;return 'Связанный адрес конкретной свалки не установлен'}
+function relationSummary(g){const r=g?.spatial_relations||[];return r.length?[...new Set(r.map(x=>relationNames[x.relation]||x.relation))].join(', '):'Не обнаружены'}
+function humanGold(r){const parts=[];for(const o of (r.panorama_observations||[])){parts.push('Панорамное наблюдение: '+(o.panorama_year||'год неизвестен')+' г.; состояние: '+(o.visual_status||'не указано')+'; примечание: '+(o.observation_note||'нет'))}for(const v of (r.gold_verifications||[])){parts.push('Результат проверки: '+(v.status||'не указан')+'; место: '+(v.location_text||v.address||'нет')+'; примечание: '+(v.evidence_note||'нет'))}return parts.length?parts.map(x=>'<p>'+esc(x)+'</p>').join(''):'Проверки и панорамные наблюдения по этому сообщению отсутствуют.'}
+function url(v){try{const u=new URL(v);return ['https:','http:'].includes(u.protocol)?u.href:null}catch{return null}}
+function sourceLink(row){const u=url(row.source_url);return u?`<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">Открыть ВК ↗</a>`:'—'}
+async function api(endpoint,opts){let r=await fetch(endpoint,opts);let d=await r.json();if(!r.ok)throw Error(d.error||r.status);return d}
+async function reload(){currentPage=1;await load()}
+async function move(delta){const next=currentPage+delta;if(next<1||next>Math.ceil(total/30))return;currentPage=next;await load()}
+async function load(){try{const q=document.querySelector('#search').value.trim();const d=await api('/api/publications?page='+currentPage+'&q='+encodeURIComponent(q)+'&level='+document.querySelector('#level').value+'&sort='+document.querySelector('#sort').value+'&direction='+document.querySelector('#direction').value+'&waste_only='+(document.querySelector('#wasteOnly').checked?'1':'0')+'&repeats='+(document.querySelector('#showRepeats').checked?'1':'0'));total=d.total;document.querySelector('#total').textContent=d.overview.publications;document.querySelector('#geocount').textContent=d.overview.spatial_candidates;document.querySelector('#mediaCount').textContent=d.overview.attachments;document.querySelector('#pages').textContent=`Страница ${currentPage} из ${Math.max(1,Math.ceil(total/30))}`;document.querySelector('#info').textContent='Найдено по фильтру: '+total+' · На странице: '+d.items.length+' · В журнале до фильтра рекомендации: '+d.overview.journal_before_recommendation+' · Групп повторов: '+d.overview.duplicate_groups+' (лишних копий: '+d.overview.duplicate_extras+') · Можно уточнить место на карте: '+d.overview.promising+' · Нужно уточнить место: '+d.overview.medium+' · Недостаточно сведений: '+d.overview.low;document.querySelector('#rows').innerHTML=d.items.map(r=>`<tr><td>${esc(fmt(r.published_at))}</td><td>${r.silver_id}</td><td><a onclick="openCard(${r.silver_id})">${esc((r.text||'Без текста').slice(0,130))}</a><div class="muted">${esc(r.post_type||'')}</div></td><td>${sourceLink(r)}<div class="muted">${esc(r.owner_id)}</div></td><td>${esc(categories(r.categories))}</td><td>${esc(r.location_display||'Местоположение не установлено')}</td><td>${r.saved_attachments||0}</td><td>${esc(addressSummary(r.geo))}</td><td><span class="rec ${esc(r.recommendation.level)}">${esc(r.recommendation.label)}</span></td><td><span class="pill">${esc(r.dashboard_status)}</span></td><td><button onclick="check(${r.silver_id})">Проверить</button></td></tr>`).join('')||'<tr><td colspan="11">Нет записей</td></tr>'}catch(e){document.querySelector('#rows').innerHTML=`<tr><td colspan="11" class="error">${esc(e.message)}</td></tr>`}}
+function kv(rows){return '<div class="kv">'+rows.map(([k,v])=>`<strong>${esc(k)}</strong><div>${esc(v??'—')}</div>`).join('')+'</div>'}
+function photos(a){const p=a.payload||{};if(a.attachment_type!=='photo')return null;const obj=p.photo||p;const sizes=obj.sizes||[];const best=sizes.filter(x=>url(x.url)).sort((a,b)=>(b.width||0)-(a.width||0))[0];return best?.url||url(obj.photo_807)||url(obj.photo_604)||url(obj.url)}
+function renderAttachments(a){if(!a.length)return '<p>Вложений нет.</p>';return '<div class="gallery">'+a.map(x=>{let link=photos(x);return `<div class="media">${link?`<a href="${esc(link)}" target="_blank" rel="noopener noreferrer"><img class="photo" src="${esc(link)}" loading="lazy" alt="Фото ВК"></a>`:`<div class="muted">${esc(x.attachment_type)} · изображение недоступно</div>`}<small>Тип: ${esc(x.attachment_type)} · позиция: ${esc(x.position)}</small></div>`}).join('')+'</div>'}
+
+// ECOFUSION_PRELIMINARY_GOLD_UI_V1
+function renderPreliminaryGold(summary) {
+  if (!summary) {
+    return `<section>
+      <h3>Автоматический анализ Яндекс Панорам</h3>
+      <p class="muted">Результаты анализа пока отсутствуют.</p>
+    </section>`;
+  }
+
+  const panoramas = Number(summary.panorama_count || 0);
+  const analyzed = Number(summary.analyzed_fragments || 0);
+  const expected = Number(summary.expected_fragments || 0);
+  const detections = Number(summary.raw_detections || 0);
+
+  const statuses = {
+    not_started: "Анализ не начат",
+    incomplete_visual_analysis: "Анализ не завершён",
+    visual_candidates_detected: "Найдены возможные объекты отходов",
+    no_visual_candidates_detected: "Модель не обнаружила объекты отходов"
+  };
+
+  const status = statuses[summary.preliminary_status]
+    || summary.preliminary_status
+    || "Неизвестный статус";
+
+  return `<section>
+    <h3>Автоматический анализ Яндекс Панорам</h3>
+    <div class="kv">
+      <strong>Найдено панорам</strong><span>${panoramas}</span>
+      <strong>Изображений обработано</strong>
+      <span>${analyzed} из ${expected}</span>
+      <strong>Обнаружений Grounding DINO</strong>
+      <span>${detections}</span>
+      <strong>Предварительный статус</strong>
+      <span>${esc(status)}</span>
+    </div>
+    <div class="hint" style="margin-top:12px">
+      <b>Предварительное заключение EcoFusion</b>
+      <p>${esc(summary.preliminary_conclusion || "")}</p>
+      <small>
+        Обнаружения модели не являются подтверждением
+        незаконного размещения отходов.
+        Фотографии публикации ВК для подтверждения не используются.
+      </small>
+    </div>
+  </section>`;
+}
+
+
+
+// ECOFUSION_FULL_PANORAMA_VIEWER_V3
+function renderPanoramaEvidence(sid) {
+  sid = Number(sid);
+  if (!Number.isSafeInteger(sid) || sid <= 0) return "";
+
+  setTimeout(() => loadPanoramaEvidence(sid), 50);
+
+  return `<section id="pano-evidence-${sid}">
+    <h3>Полные изображения Яндекс Панорам</h3>
+    <p class="muted">Загрузка сохранённых изображений...</p>
+  </section>`;
+}
+
+async function loadPanoramaEvidence(sid) {
+  const root = document.getElementById(`pano-evidence-${sid}`);
+  if (!root || root.dataset.loaded === "1") return;
+
+  try {
+    const response = await fetch(
+      `/api/panorama-detections/${sid}`,
+      {cache:"no-store"}
+    );
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const data = await response.json();
+    const records = Array.isArray(data.fragments) ? data.fragments : [];
+
+    if (!root.isConnected) return;
+
+    const ids = [...new Set(
+      records.map(x => Number(x.candidate_id))
+    )].filter(Number.isSafeInteger).sort((a,b) => a-b);
+
+    if (!ids.length) {
+      root.innerHTML = `<h3>Полные изображения Яндекс Панорам</h3>
+        <p>Сохранённые результаты пока отсутствуют.</p>`;
+      return;
+    }
+
+    root.dataset.loaded = "1";
+
+    root.innerHTML = `
+      <h3>Полные изображения Яндекс Панорам</h3>
+      <p class="muted">
+        Переключайте независимые позиции съёмки.
+        Обнаружения Grounding DINO экспериментальные:
+        зафиксированы многочисленные ложные срабатывания.
+      </p>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0">
+        <button type="button" data-full="prev">← Предыдущая</button>
+        <strong data-full="counter"></strong>
+        <button type="button" data-full="next">Следующая →</button>
+        <label>
+          <input type="checkbox" data-full="boxes">
+          Показать рамки модели
+        </label>
+      </div>
+      <div style="position:relative;width:100%;max-width:1000px">
+        <img data-full="image"
+             alt="Полное изображение Яндекс Панорамы"
+             style="display:block;width:100%;height:auto">
+        <svg data-full="overlay"
+             xmlns="http://www.w3.org/2000/svg"
+             style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></svg>
+      </div>
+      <p data-full="info" class="muted"></p>
+      <p class="muted">
+        Рамки показывают области, выделенные моделью,
+        а не подтверждённые скопления отходов.
+        Дата съёмки и актуальность изображения требуют отдельной оценки.
+      </p>`;
+
+    const img = root.querySelector('[data-full="image"]');
+    const overlay = root.querySelector('[data-full="overlay"]');
+    const counter = root.querySelector('[data-full="counter"]');
+    const info = root.querySelector('[data-full="info"]');
+    const toggle = root.querySelector('[data-full="boxes"]');
+    const prev = root.querySelector('[data-full="prev"]');
+    const next = root.querySelector('[data-full="next"]');
+
+    const ns = "http://www.w3.org/2000/svg";
+    let index = 0;
+    let generation = 0;
+
+    function draw() {
+      overlay.replaceChildren();
+      if (!toggle.checked || !img.complete || !img.naturalWidth) return;
+
+      const candidate = ids[index];
+      const width = img.naturalWidth;
+      const height = img.naturalHeight;
+
+      overlay.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+      const fragments = records.filter(x =>
+        Number(x.candidate_id) === candidate
+      );
+
+      for (const fragment of fragments) {
+        const part = Number(fragment.image_part);
+        if (!Number.isInteger(part) || part < 4 || part > 7) continue;
+
+        // The original saver divided the lower half into 4 equal columns.
+        const left = Math.floor((part - 4) * width / 4);
+        const right = Math.floor((part - 3) * width / 4);
+        const top = Math.floor(height / 2);
+        const cropWidth = right - left;
+        const cropHeight = height - top;
+
+        for (const detection of (fragment.detections || [])) {
+          const b = detection.bbox_xyxy;
+          if (!Array.isArray(b) || b.length !== 4) continue;
+
+          const v = b.map(Number);
+          if (!v.every(Number.isFinite)) continue;
+
+          const x1 = Math.max(0, Math.min(cropWidth, v[0])) + left;
+          const y1 = Math.max(0, Math.min(cropHeight, v[1])) + top;
+          const x2 = Math.max(0, Math.min(cropWidth, v[2])) + left;
+          const y2 = Math.max(0, Math.min(cropHeight, v[3])) + top;
+
+          if (x2 <= x1 || y2 <= y1) continue;
+
+          const rect = document.createElementNS(ns,"rect");
+          rect.setAttribute("x",x1);
+          rect.setAttribute("y",y1);
+          rect.setAttribute("width",x2-x1);
+          rect.setAttribute("height",y2-y1);
+          rect.setAttribute("stroke","#f03434");
+          rect.setAttribute("stroke-width","5");
+          rect.setAttribute("fill","none");
+          overlay.appendChild(rect);
+
+          const label = document.createElementNS(ns,"text");
+          label.setAttribute("x",x1+4);
+          label.setAttribute("y",Math.max(24,y1-7));
+          label.setAttribute("font-size","25");
+          label.setAttribute("font-weight","bold");
+          label.setAttribute("fill","#e02020");
+          label.setAttribute("stroke","white");
+          label.setAttribute("stroke-width","3");
+          label.setAttribute("paint-order","stroke");
+
+          const confidence = Number(detection.confidence);
+          label.textContent = Number.isFinite(confidence)
+            ? `Кандидат ${(confidence*100).toFixed(1)}%`
+            : "Кандидат";
+
+          overlay.appendChild(label);
+        }
+      }
+    }
+
+    function show() {
+      const candidate = ids[index];
+      const current = ++generation;
+
+      overlay.replaceChildren();
+      counter.textContent = `Панорама ${index+1} из ${ids.length}`;
+
+      const count = records
+        .filter(x => Number(x.candidate_id) === candidate)
+        .reduce((sum,x) => sum + Number(x.detection_count || 0),0);
+
+      info.textContent =
+        `Позиция ${candidate}. Сырых обнаружений модели: ${count}.`;
+
+      prev.disabled = index === 0;
+      next.disabled = index === ids.length - 1;
+
+      img.onload = () => {
+        if (current === generation) draw();
+      };
+
+      img.onerror = () => {
+        if (current === generation) {
+          info.textContent = "Ошибка загрузки полного изображения";
+        }
+      };
+
+      img.src = `/api/panorama-full/${sid}/${candidate}`;
+    }
+
+    prev.addEventListener("click", () => {
+      if (index > 0) { index--; show(); }
+    });
+
+    next.addEventListener("click", () => {
+      if (index < ids.length-1) { index++; show(); }
+    });
+
+    toggle.addEventListener("change",draw);
+    show();
+
+  } catch(error) {
+    if (root && root.isConnected) {
+      root.textContent = "Ошибка просмотра панорам: " + error.message;
+    }
+  }
+}
+
+
+// ECOFUSION_YOLO_VIEWER_V1
+function renderYoloEvidence(sid) {
+  sid = Number(sid);
+  if (!Number.isSafeInteger(sid) || sid <= 0) return "";
+
+  setTimeout(() => loadYoloEvidence(sid), 50);
+
+  return `<section id="yolo-evidence-${sid}">
+    <h3>Анализ панорам — YOLO11n</h3>
+    <p class="muted">Загрузка результатов YOLO11n...</p>
+  </section>`;
+}
+
+async function loadYoloEvidence(sid) {
+  const root = document.getElementById(`yolo-evidence-${sid}`);
+  if (!root || root.dataset.loaded === "1") return;
+  root.dataset.loaded = "1";
+
+  try {
+    const listResponse = await fetch(
+      `/api/yolo-runs/${sid}`, {cache:"no-store"}
+    );
+    if (!listResponse.ok) throw Error(`HTTP ${listResponse.status}`);
+    const listData = await listResponse.json();
+    if (!root.isConnected) return;
+
+    const runs = Array.isArray(listData.runs) ? listData.runs : [];
+
+    if (!runs.length) {
+      root.innerHTML = `<h3>Анализ панорам — YOLO11n</h3>
+        <p class="muted">
+          Для этой публикации нет сохранённых результатов YOLO11n.
+        </p>`;
+      return;
+    }
+
+    root.innerHTML = `
+      <h3>Анализ панорам — YOLO11n</h3>
+      <p class="muted">
+        Обнаружения модели предварительные и требуют проверки.
+        Наличие отходов на изображении не доказывает их незаконное размещение.
+      </p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:12px 0">
+        <label>Запуск:
+          <select data-yolo="run"></select>
+        </label>
+        <button type="button" data-yolo="prev">← Предыдущая</button>
+        <strong data-yolo="counter"></strong>
+        <button type="button" data-yolo="next">Следующая →</button>
+        <label>
+          <input type="checkbox" data-yolo="boxes">
+          Показывать рамки YOLO11n
+        </label>
+      </div>
+      <p data-yolo="status" class="muted"></p>
+      <div style="position:relative;width:100%;max-width:1000px">
+        <img data-yolo="image"
+          alt="Полная сохранённая панорама для анализа YOLO11n"
+          style="display:block;width:100%;height:auto">
+        <svg data-yolo="overlay"
+          xmlns="http://www.w3.org/2000/svg"
+          style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">
+        </svg>
+      </div>
+      <p data-yolo="info" class="muted"></p>
+      <p class="muted">
+        Рамки рассчитаны из координат четырёх фрагментов нижней
+        половины панорамы. Дата съёмки требует отдельной проверки.
+      </p>`;
+
+    const find = key => root.querySelector(`[data-yolo="${key}"]`);
+    const runSelect = find("run");
+    const img = find("image");
+    const overlay = find("overlay");
+    const prev = find("prev");
+    const next = find("next");
+    const counter = find("counter");
+    const toggle = find("boxes");
+    const info = find("info");
+    const status = find("status");
+
+    const ns = "http://www.w3.org/2000/svg";
+    let details = null;
+    let index = 0;
+    let generation = 0;
+    let requestGeneration = 0;
+
+    for (const run of runs) {
+      const id = Number(run.search_run_id);
+      if (!Number.isSafeInteger(id) || id <= 0) continue;
+      const option = document.createElement("option");
+      option.value = String(id);
+      option.textContent = `№ ${id} — ${run.fragment_count} фрагм., ${run.total_detections} обнаруж.`;
+      runSelect.appendChild(option);
+    }
+
+    function candidates() {
+      return Array.isArray(details?.candidates)
+        ? details.candidates : [];
+    }
+
+    function draw() {
+      overlay.replaceChildren();
+      if (!toggle.checked || !img.complete || !img.naturalWidth) return;
+
+      const selected = candidates()[index];
+      if (!selected) return;
+      const cid = Number(selected.candidate_id);
+      const width = img.naturalWidth;
+      const height = img.naturalHeight;
+
+      overlay.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+      for (const fragment of (details.fragments || [])) {
+        if (Number(fragment.candidate_id) !== cid) continue;
+        const part = Number(fragment.image_part);
+        if (!Number.isInteger(part) || part < 4 || part > 7) continue;
+
+        const left = Math.floor((part - 4) * width / 4);
+        const right = Math.floor((part - 3) * width / 4);
+        const top = Math.floor(height / 2);
+        const cropWidth = right - left;
+        const cropHeight = height - top;
+
+        for (const detection of (fragment.detections || [])) {
+          const b = detection.bbox_xyxy;
+          if (!Array.isArray(b) || b.length !== 4) continue;
+          const v = b.map(Number);
+          if (!v.every(Number.isFinite)) continue;
+
+          const x1 = Math.max(0, Math.min(cropWidth,v[0])) + left;
+          const y1 = Math.max(0, Math.min(cropHeight,v[1])) + top;
+          const x2 = Math.max(0, Math.min(cropWidth,v[2])) + left;
+          const y2 = Math.max(0, Math.min(cropHeight,v[3])) + top;
+          if (x2 <= x1 || y2 <= y1) continue;
+
+          const rect = document.createElementNS(ns,"rect");
+          rect.setAttribute("x",x1);
+          rect.setAttribute("y",y1);
+          rect.setAttribute("width",x2-x1);
+          rect.setAttribute("height",y2-y1);
+          rect.setAttribute("stroke","#f03434");
+          rect.setAttribute("stroke-width","5");
+          rect.setAttribute("fill","none");
+          overlay.appendChild(rect);
+
+          const label = document.createElementNS(ns,"text");
+          label.setAttribute("x",x1+4);
+          label.setAttribute("y",Math.max(24,y1-7));
+          label.setAttribute("font-size","25");
+          label.setAttribute("font-weight","bold");
+          label.setAttribute("fill","#e02020");
+          label.setAttribute("stroke","white");
+          label.setAttribute("stroke-width","3");
+          label.setAttribute("paint-order","stroke");
+
+          const confidence = Number(detection.confidence);
+          const className = String(detection.class || "object")
+            .slice(0,40);
+          label.textContent = Number.isFinite(confidence)
+            ? `${className}: ${(confidence*100).toFixed(1)}%`
+            : className;
+          overlay.appendChild(label);
+        }
+      }
+    }
+
+    function show() {
+      const items = candidates();
+      const selected = items[index];
+      const current = ++generation;
+      overlay.replaceChildren();
+
+      if (!selected) {
+        counter.textContent = "Нет панорам";
+        img.removeAttribute("src");
+        info.textContent = "Изображения отсутствуют.";
+        prev.disabled = true;
+        next.disabled = true;
+        return;
+      }
+
+      const cid = Number(selected.candidate_id);
+      counter.textContent = `Панорама ${index+1} из ${items.length}`;
+      prev.disabled = index === 0;
+      next.disabled = index >= items.length-1;
+
+      const fragments = (details.fragments || []).filter(
+        x => Number(x.candidate_id) === cid
+      );
+      const count = fragments.reduce(
+        (sum,x) => sum + Number(x.detection_count || 0), 0
+      );
+      info.textContent =
+        `Кандидат № ${cid}. Обработано фрагментов: ${fragments.length}/4. ` +
+        `Обнаружений YOLO11n: ${count}. Требуется проверка аналитиком.`;
+
+      img.onload = () => {
+        if (current === generation) draw();
+      };
+      img.onerror = () => {
+        if (current === generation) {
+          overlay.replaceChildren();
+          info.textContent =
+            `Кандидат № ${cid}: не удалось загрузить полную панораму.`;
+        }
+      };
+      img.src = `/api/panorama-full/${sid}/${cid}`;
+    }
+
+    async function loadRun() {
+      const request = ++requestGeneration;
+      const runId = Number(runSelect.value);
+      if (!Number.isSafeInteger(runId) || runId <= 0) return;
+
+      status.textContent = "Загрузка выбранного запуска...";
+      overlay.replaceChildren();
+      img.removeAttribute("src");
+      details = null;
+      ++generation;
+
+      try {
+        const response = await fetch(
+          `/api/yolo-run-detections/${runId}`, {cache:"no-store"}
+        );
+        if (!response.ok) throw Error(`HTTP ${response.status}`);
+        const data = await response.json();
+
+        if (request !== requestGeneration || !root.isConnected) return;
+        if (
+          Number(data.silver_id) !== sid ||
+          Number(data.search_run_id) !== runId
+        ) {
+          throw Error("Неверная привязка результатов к публикации");
+        }
+
+        details = data;
+        index = 0;
+        const archival = data.archival_import || data.test_replay;
+        status.textContent =
+          `Запуск № ${runId}. ` +
+          (archival ? "АРХИВНЫЙ ТЕСТ. " : "") +
+          `Фрагментов: ${data.fragment_count}; ` +
+          `обнаружений: ${data.total_detections}.`;
+        show();
+      } catch (error) {
+        if (request !== requestGeneration || !root.isConnected) return;
+        status.textContent = "Ошибка загрузки YOLO11n: " + error.message;
+        info.textContent = "";
+      }
+    }
+
+    prev.addEventListener("click", () => {
+      if (index > 0) { index--; show(); }
+    });
+    next.addEventListener("click", () => {
+      if (index < candidates().length-1) { index++; show(); }
+    });
+    toggle.addEventListener("change",draw);
+    runSelect.addEventListener("change",loadRun);
+
+    await loadRun();
+  } catch (error) {
+    if (root && root.isConnected) {
+      root.textContent = "Ошибка раздела YOLO11n: " + error.message;
+    }
+  }
+}
+
+async function openCard(id){const body=document.querySelector('#cardbody');document.querySelector('#overlay').classList.add('visible');body.innerHTML='Загрузка…';try{let r=await api('/api/publications/'+id);lastItem=r;document.querySelector('#cardtitle').textContent='Публикация № '+id;let rec=r.recommendation;const technical=['silver_id','source_object_id','owner_id','publication_id','from_id','post_type','source','published_at','processed_at','likes_count','reposts_count','comments_count','views_count','attachment_count','classifier_version','classified_at','region_confidence','event_region_confidence','region_classifier_version','needs_review','event_region_basis'];body.innerHTML=`<section><h3>Текст сообщения ВК</h3><pre>${esc(r.text||'Текст отсутствует')}</pre>${sourceLink(r)}</section><section><h3>Вложения (${r.attachments.length})</h3>${renderAttachments(r.attachments)}</section><section><h3>Анализ сообщения и местоположения</h3>${kv([['Тема сообщения',categories(r.categories)],['Упомянутый регион',r.region||'Не установлен'],['Предполагаемый регион события',r.event_region||'Не установлен'],['Города, упомянутые в тексте (по справочнику)',(r.city_mentions_reference||[]).map(x=>x.city+' — '+x.regions.join(', ')+(x.ambiguous?' (неоднозначно)':'')).join('; ')||'Не обнаружены'],['Адресная привязка по смыслу сообщения',locationEvidence(r)],['Территории, округа и лесничества',territorySummary(r.geographical_evidence)],['Адресные ориентиры',addressSummary(r.geo)],['Объекты, упомянутые в тексте',objectSummary(r.geo)],['Расположение отходов относительно ориентира',relationSummary(r.geo)],['Нужна проверка классификации',r.needs_review?'Да':'Нет']])}</section><section><h3>Подсказка аналитику</h3><div class="hint"><b>${esc(rec.label)}</b><p>${esc(rec.reason)}</p><small>Рекомендация предварительная, решение принимает человек.</small></div><p><button onclick="check(${id})">Предварительная проверка</button></p>
+<div id="checkResult"></div>
+<h3>Решение аналитика — Gold</h3>
+${(r.gold_verifications||[]).length
+  ? '<p class="muted">Решение уже сохранено в Gold. Повторная запись заблокирована.</p>'
+  : `<div class="hint">
+      <p>Выберите результат только после изучения публикации и доступных доказательств.</p>
+      <label for="goldStatus">Результат проверки</label>
+      <select id="goldStatus">
+        <option value="insufficient_data">Недостаточно данных</option>
+        <option value="confirmed">Наличие отходов подтверждено</option>
+        <option value="refuted">Сообщение опровергнуто</option>
+      </select>
+      <p><label for="goldLocation">Описание местоположения</label></p>
+      <input id="goldLocation" maxlength="500"
+        value="${esc(r.location_display||'')}"
+        placeholder="Место по сообщению или не установлено"
+        style="width:100%;box-sizing:border-box">
+      <p><label for="goldNote">Комментарий и основания решения</label></p>
+      <textarea id="goldNote" rows="4" maxlength="3000"
+        placeholder="Опишите изученные сведения, доказательства и ограничения проверки"
+        style="width:100%;box-sizing:border-box"></textarea>
+      <p><button onclick="saveGoldDecision(${id})">Сохранить результат в Gold</button></p>
+      <div id="goldSaveResult"></div>
+     </div>`
+}</section>${renderPreliminaryGold(r.preliminary_summary)}${renderYoloEvidence(r.silver_id)}<section><h3>Результаты проверки по картам и изображениям</h3><p>Панорамных наблюдений: ${r.panorama_observations.length}; записей проверки: ${r.gold_verifications.length}</p>${humanGold(r)}<details><summary>Технические записи результатов проверки</summary><pre>${esc(JSON.stringify({panorama_observations:r.panorama_observations,gold_verifications:r.gold_verifications},null,2))}</pre></details></section><section><details><summary>Технические поля публикации</summary>${kv(technical.map(k=>[k,r[k]]))}</details></section><section><details><summary>Исходный JSON публикации (Bronze/Silver)</summary><pre>${esc(JSON.stringify(r.raw_json,null,2))}</pre></details><details><summary>Все метаданные вложений</summary><pre>${esc(JSON.stringify(r.attachments,null,2))}</pre></details></section>`}catch(e){body.innerHTML='<div class="error">'+esc(e.message)+'</div>'}}
+// ECOFUSION_PANORAMA_BRIDGE_V1
+window.addEventListener("message", function(event) {
+  if(event.origin !== "http://localhost:8765") return;
+
+  const data=event.data;
+  if(!data || data.type!=="ecofusion_panorama_results") return;
+
+  const frame=document.querySelector(
+    'iframe[data-ecofusion-sid]'
+  );
+
+  if(!frame || event.source!==frame.contentWindow) return;
+  if(String(data.silver_id)!==frame.dataset.ecofusionSid) return;
+
+  const target=document.querySelector("#panoramaReport");
+  if(!target)return;
+
+  const report=data.report||{};
+  const candidates=Array.isArray(report.selected_panoramas)
+    ?report.selected_panoramas:[];
+
+  const lines=[
+    "Поиск панорам завершён",
+    "Поисковых точек: "+String(report.search_points??0),
+    "Уникальных панорам: "+String(report.unique_panoramas??0),
+    "Отобрано: "+String(candidates.length),
+    ""
+  ];
+
+  for(const p of candidates){
+    lines.push(
+      "№"+p.number+
+      " | "+p.distance_m+" м"+
+      " | направление "+p.bearing_to_reference_deg+"°"+
+      " | оценка "+p.selection_score
+    );
+  }
+
+  if(report.search_errors && report.search_errors.length){
+    lines.push("Ошибки: "+report.search_errors.join("; "));
+  }
+
+  lines.push("");
+  lines.push("Это предварительный отбор точек съёмки.");
+  lines.push("Видимость места отходов ещё не подтверждена.");
+
+  target.textContent=lines.join("\n");
+
+  // ECOFUSION_AUTO_SAVE_CANDIDATES_V1
+  // Save discovered positions only, not visual conclusions.
+  // ECOFUSION_SEARCH_RUN_HANDOFF_V1
+  const payload={
+    selected_panoramas:candidates,
+    spatial_context:report.spatial_context||{},
+    search_query:report.search_query||"",
+    search_report:report
+  };
+
+  const sid=Number(data.silver_id);
+
+  if(!Number.isSafeInteger(sid) || sid<=0){
+    target.textContent+="\\nОшибка: некорректный ID публикации.";
+    return;
+  }
+
+  target.textContent+="\\nСохранение кандидатов в Gold...";
+
+  fetch("/api/panorama-candidates/"+sid,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(payload)
+  })
+  .then(async response=>{
+    const result=await response.json();
+
+    if(!response.ok){
+      throw new Error(result.error||"HTTP "+response.status);
+    }
+
+    return result;
+  })
+  .then(result=>{
+    target.textContent+="\\nСохранено позиций: "+
+      String(result.candidate_count)+
+      "\\nИдентификатор запуска: "+
+      String(result.search_run_id??"не присвоен")+
+      "\\nВизуальный анализ ещё не выполнялся.";
+  })
+  .catch(error=>{
+    target.textContent+="\\nОшибка сохранения: "+
+      String(error.message||error);
+  });
+});
+
+async function check(id){
+  const button=document.activeElement;
+  if(button && button.tagName==='BUTTON')button.disabled=true;
+
+  try{
+    const result=await api('/api/check/'+id,{method:'POST'});
+
+    if(!document.querySelector('#overlay').classList.contains('visible')){
+      await openCard(id);
+    }
+
+    const el=document.querySelector('#checkResult');
+    if(!el)return;
+
+    const success=result.status==='geocoding_complete';
+    const parts=[];
+
+    if(result.search_query)
+      parts.push('<p><b>Поисковый запрос:</b> '+esc(result.search_query)+'</p>');
+
+    if(result.resolved_address)
+      parts.push('<p><b>Адрес Яндекса:</b> '+esc(result.resolved_address)+'</p>');
+
+    if(result.precision)
+      parts.push('<p><b>Точность:</b> '+esc(result.precision)+'</p>');
+
+    if(result.latitude!=null && result.longitude!=null){
+      parts.push(
+        '<p><b>Координаты кандидата:</b> '+
+        esc(String(result.latitude))+', '+
+        esc(String(result.longitude))+'</p>'
+      );
+    }
+
+    parts.push('<p>'+esc(result.message||'Результат отсутствует')+'</p>');
+
+    if(success){
+      parts.push(
+        '<p><small>Координаты относятся к найденному адресу, '+
+        'а не к подтверждённому месту свалки.</small></p>'
+      );
+
+      const lat=Number(result.latitude);
+      const lon=Number(result.longitude);
+
+      if(Number.isFinite(lat) && Number.isFinite(lon) &&
+         lat>=-90 && lat<=90 && lon>=-180 && lon<=180){
+
+        const panoramaUrl=
+          'http://localhost:8765/?lat='+encodeURIComponent(lat)+
+          '&lon='+encodeURIComponent(lon)+'&auto=1'+
+          '&sid='+encodeURIComponent(id)+
+          '&context='+encodeURIComponent(
+            JSON.stringify(result.spatial_context||{})
+          )+
+          // ECOFUSION_PARCEL_PLAN_HANDOFF_V1
+          '&plan='+encodeURIComponent(
+            JSON.stringify(result.panorama_search_plan||null)
+          );
+
+        parts.push(
+          '<p><b>Автоматический поиск Яндекс Панорам</b></p>'+
+          '<p>Поиск запускается автоматически. '+
+          'Если доступная панорама найдена, она появится ниже.</p>'+
+          '<iframe data-ecofusion-sid="'+esc(String(id))+'" '+
+          'title="Автоматический поиск панорам EcoFusion" '+
+          'src="'+esc(panoramaUrl)+'" '+
+          'style="width:100%;height:540px;border:1px solid #ccc" '+
+          'loading="eager"></iframe>'+
+          '<pre id="panoramaReport">Ожидаем результаты поиска панорам...</pre>'
+        );
+      }
+    }
+
+    el.innerHTML='<div class="hint"><b>'+
+      (success?'Геокодирование выполнено':'Результат автоматического поиска')+
+      '</b>'+parts.join('')+'</div>';
+
+  }catch(e){
+    alert('Ошибка проверки: '+e.message);
+  }finally{
+    if(button && button.tagName==='BUTTON')button.disabled=false;
+  }
+}
+async function saveGoldDecision(id){
+  const status=document.querySelector('#goldStatus')?.value;
+  const location=document.querySelector('#goldLocation')?.value.trim()||'';
+  const note=document.querySelector('#goldNote')?.value.trim()||'';
+  const result=document.querySelector('#goldSaveResult');
+
+  if(!result)return;
+
+  if(note.length<10){
+    result.textContent='Введите обоснование решения (не менее 10 символов).';
+    return;
+  }
+
+  if(status==='confirmed'||status==='refuted'){
+    if(!confirm('Вы подтверждаете, что располагаете доказательствами для этого заключения?')){
+      return;
+    }
+  }
+
+  if(!confirm('Сохранить решение аналитика в Gold? Повторная запись для этой публикации будет заблокирована.')){
+    return;
+  }
+
+  result.textContent='Сохранение...';
+
+  try{
+    const saved=await api('/api/verify/'+id,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        status:status,
+        location_text:location,
+        evidence_note:note
+      })
+    });
+
+    result.textContent=saved.message||'Результат сохранён';
+    await openCard(id);
+    await load();
+  }catch(e){
+    result.textContent='Ошибка сохранения: '+e.message;
+  }
+}
+
+function closeCard(){document.querySelector('#overlay').classList.remove('visible')}document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCard();if(e.key==='Enter'&&e.target.id==='search')reload()});load();
+</script></body></html>

@@ -1,0 +1,66 @@
+# EcoFusion - source code only
+
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+token.txt
+**/token.txt
+**/*secret*
+**/*credentials*
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Runtime data and model weights
+data/
+logs/
+*.pt
+*.pth
+*.onnx
+*.sqlite
+*.sqlite3
+*.db
+
+# Archives and backups
+*.zip
+*.z01
+*.z02
+*.z03
+*.7z
+*.rar
+*.backup
+*.bak
+*.backup.*
+*before_*
+*_before_*
+compose.backup.yaml
+.gitignore.before_github
+
+# Python and temporary files
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+.cache/
+.ipynb_checkpoints/
+
+# Local output
+output/
+outputs/
+runs/
+results/
+dist/
+build/
+# Historical development backups
+*_backup_*
+*backup_step*
+*_backup.*
+*.orig
+*.tmp
+
+# Local experimental descriptions
+docs/adresekolog.txt

@@ -1,0 +1,47 @@
+name: ecofusion
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: ecofusion-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    ports:
+      - "127.0.0.1:5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    mem_limit: 512m
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:latest
+    container_name: ecofusion-seaweedfs
+    restart: unless-stopped
+
+    environment:
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+
+    ports:
+      - "127.0.0.1:8333:8333"
+
+    volumes:
+      - seaweed_data:/data
+
+    mem_limit: 768m
+volumes:
+  postgres_data:
+  seaweed_data:
+
